@@ -1,7 +1,5 @@
 package lab02
 
-import Wypozyczalnia
-
 val xml_pojazdy = """<pojazdy>
     <samochod>
         <nazwa>
@@ -60,47 +58,48 @@ fun parsePojazdy(xml: String): List<Pojazd> {
     }.toList()
 }
 
+private fun Pojazd.formatLine(): String = when (this) {
+    is Samochod -> "${id}. ${this::class.simpleName}: ${nazwa}  (${rodzajPaliwa.label}  Stan baku = $aktualnyStanBaku/$pojemnoscBaku)"
+    is Motorowka -> "${id}. ${this::class.simpleName}: ${nazwa} (${rodzajPaliwa.label}  Stan baku = $aktualnyStanBaku/$pojemnoscBaku)"
+    else -> "${id}. ${this::class.simpleName}: ${nazwa}"
+}
+
+fun List<Pojazd>.posortowanePoNazwie(): List<Pojazd> =
+    this.sortedBy { it.nazwa.trim().lowercase() }
+
 fun main() {
     val pojazdy = parsePojazdy(xml_pojazdy)
+    println(pojazdy)
+
     val wypozyczalnia = Wypozyczalnia(5)
-    val report = pojazdy.map { p ->
-        val idx = (0 until wypozyczalnia.getGaragesCount()).firstOrNull { i -> wypozyczalnia.get(i) == null }
-        if (idx != null && wypozyczalnia.park(p, idx)) {
-            when (p) {
-                is Samochod -> "${p.id}. ${p::class.simpleName}: ${p.nazwa} (rodzaj paliwa: ${p.rodzajPaliwa.label}) -> parked at #$idx"
-                is Motorowka -> "${p.id}. ${p::class.simpleName}: ${p.nazwa} (rodzaj paliwa: ${p.rodzajPaliwa.label}) -> parked at #$idx"
-                else -> "${p.id}. ${p::class.simpleName}: ${p.nazwa} -> parked at #$idx"
-            }
+    val report = pojazdy.map { it.formatLine() }
+    println(report.joinToString("\n"))
+
+    println("\nPosortowane po nazwie:")
+    val posortowane = pojazdy.posortowanePoNazwie()
+    println(posortowane.joinToString("\n") { it.formatLine() })
+
+    println("\nWyporzyczalnie:")
+    println(wypozyczalnia.status())
+    pojazdy.map { p ->
+        if (p is Parkowalny) {
+            wypozyczalnia.park(p)
         } else {
-            when (p) {
-                is Samochod -> "${p.id}. ${p::class.simpleName}: ${p.nazwa} (rodzaj paliwa: ${p.rodzajPaliwa.label}) -> no space"
-                is Motorowka -> "${p.id}. ${p::class.simpleName}: ${p.nazwa} (rodzaj paliwa: ${p.rodzajPaliwa.label}) -> no space"
-                else -> "${p.id}. ${p::class.simpleName}: ${p.nazwa} -> no space"
-            }
+            false
         }
     }
+    println(wypozyczalnia.status())
+    wypozyczalnia.unparkById(1)
+    println(wypozyczalnia.status())
+    wypozyczalnia.park(pojazdy[0])
+    println(wypozyczalnia.status())
 
-    println(report.joinToString("\n"))
-    println("\nGarage status:")
-    println(wypozyczalnia.status())
-    wypozyczalnia.remove(3);
-    println(wypozyczalnia.status())
-    // now this will print "already parked" if the vehicle is still parked elsewhere
-    val last = pojazdy.get(3);
-    var parkedAt = wypozyczalnia.findGarageIndex(last)
-    if (parkedAt != null) {
-        println("${last.id}. ${last::class.simpleName}: ${last.nazwa} -> already parked at #$parkedAt")
-    } else {
-        println(wypozyczalnia.tryParkOrReport(last,2))
-        println(wypozyczalnia.status())
+    println("\nTankowanie:")
+    if (pojazdy[1] is Spaliny) {
+        val spaliny = pojazdy[1] as Spaliny
+        val success = spaliny.tank(20, RodzajPaliwa.Diesel)
+        println("Tankowanie 20L DIESEL dla pojazdu id=${pojazdy[1].id} (${pojazdy[1].nazwa}): $success")
     }
 
-//    println(pojazdy.joinToString("\n") { p ->
-//        when (p) {
-//            is Samochod -> "${p.id}. ${p::class.simpleName}: ${p.nazwa} (rodzaj paliwa: ${p.rodzajPaliwa.label})"
-//            is Motorowka -> "${p.id}. ${p::class.simpleName}: ${p.nazwa} (rodzaj paliwa ${p.rodzajPaliwa.label})"
-//            else -> "${p.id}. ${p::class.simpleName}: ${p.nazwa}"
-//        }
-//    })
-
+    println(pojazdy[1])
 }

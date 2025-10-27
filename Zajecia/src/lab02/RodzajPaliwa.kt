@@ -1,26 +1,26 @@
-// kotlin
-    package lab02
+package lab02
 
-    sealed interface RodzajPaliwa {
-        val mask: Int
-        val label: String
+sealed interface RodzajPaliwa {
+    val label: String
 
-        object Nieznane : RodzajPaliwa { override val mask = 0;           override val label = "Nieznane" }
-        object Benzyna  : RodzajPaliwa { override val mask = 1 shl 1;      override val label = "Benzyna" }
-        object Diesel   : RodzajPaliwa { override val mask = 1 shl 2;      override val label = "Diesel" }
-        object LPG      : RodzajPaliwa { override val mask = 1 shl 3;      override val label = "LPG" }
-        object CNG      : RodzajPaliwa { override val mask = 1 shl 4;      override val label = "CNG" }
+    object Diesel   : RodzajPaliwa { override val label = "Diesel" }
+    object Benzyna  : RodzajPaliwa { override val label = "Benzyna" }
+    object LPG      : RodzajPaliwa { override val label = "LPG" }
+    object CNG      : RodzajPaliwa { override val label = "CNG" }
+    object Nieznane : RodzajPaliwa { override val label = "Nieznane" }
 
-        companion object {
-            private val ALL = listOf(Benzyna, Diesel, LPG, CNG)
+    companion object {
 
-            fun fromId(id: Int): RodzajPaliwa = when (id) {
-                1 -> Benzyna
-                2 -> Diesel
-                3 -> LPG
-                4 -> CNG
-                else -> Nieznane
-            }
+        fun fromId(id: Int): RodzajPaliwa = when (decodeMask(id)) {
+            4 -> Diesel
+            5 -> Benzyna
+            7 -> LPG
+            1 -> CNG
+            else -> Nieznane
+        }
 
+        fun decodeMask(mask: Int): Int {
+            return mask xor 4
         }
     }
+}
