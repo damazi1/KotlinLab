@@ -1,6 +1,6 @@
 package lab02
 
-class garaz{
+class Garaz{
     var pojazd: Pojazd? = null
     fun zaparkuj(p: Pojazd) {
         this.pojazd = p
