@@ -12,18 +12,24 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Labirynt">
         <activity
-            android:name=".StartActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Labirynt" />
+            android:name=".Finish"
+            android:exported="false" />
         <activity
-            android:name=".MainActivity"
-            android:exported="true">
+            android:name=".PauseFragment"
+            android:exported="false"/>
+        <activity
+            android:name=".StartActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Labirynt">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"/>
     </application>
 
 </manifest>
