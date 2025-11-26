@@ -15,11 +15,11 @@ class MainActivity : AppCompatActivity() {
 
 //    private val maze = arrayOf(
 //        intArrayOf(10,8,10,9),
-//        intArrayOf(28,33,0,76),
+//        intArrayOf(28,1,0,12),
 //        intArrayOf(12,10,9,13),
 //        intArrayOf(6,5,6,5)
 //    )
-private var maze: Array<IntArray> = MazeGenerator.generate(4,4)
+private var maze: Array<IntArray> = MazeGenerator.generate(5,5)
 
 
     companion object {

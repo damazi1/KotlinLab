@@ -13,19 +13,16 @@ class MazeGenerator {
         private const val RIGHT = 0b0010
         private const val LEFT = 0b0001
         private const val ENTRANCE = 0b10000
-        private const val EXIT = 0b00 // Uwaga: W oryginalnym kodzie EXIT to 0, upewnij się, że masz logikę rysowania dla tego. Zazwyczaj warto dać np. 0b10000000
+        private const val EXIT = 0b00
 
-        fun generate(rows: Int, cols: Int): Array<IntArray> {
+
+        fun generate(rows: Int, cols: Int, maxAttempts: Int = 10): Array<IntArray> {
             var maze: Array<IntArray>
             var attempts = 0
-            val maxAttempts = 100 // Zabezpieczenie przed nieskończoną pętlą
-
             do {
                 maze = generateAttempt(rows, cols)
                 attempts++
-
                 if (attempts >= maxAttempts) {
-                    // Fallback - zwróć ostatnią próbę nawet jeśli nie jest idealna
                     println("Ostrzeżenie: Przekroczono maksymalną liczbę prób generowania labiryntu")
                     break
                 }
@@ -35,34 +32,36 @@ class MazeGenerator {
             return maze
         }
 
+        /**
+         * Funkcja próbuje wygenerować labirynt z wejściem, kluczem, drzwiami i wyjściem
+         * W przypadku niepowodzenia (np. brak przechodniości) należy wywołać ją ponownie
+         * @param rows Liczba wierszy
+         * @param cols Liczba kolumn
+         * @return Macierz reprezentująca labirynt
+         */
         private fun generateAttempt(rows: Int, cols: Int): Array<IntArray> {
             val maze = Array(rows) { IntArray(cols) }
             val visited = Array(rows) { BooleanArray(cols) { false } }
 
-            // 1. Wygeneruj spójny labirynt (DFS)
             generatePath(maze, visited, 0, 0)
 
-            // 2. Znajdź wszystkie ślepe zaułki
             val allDeadEnds = findAllDeadEnds(maze, rows, cols)
 
-            // Filtruj ślepe zaułki na krawędziach dla wejścia
+            // Ślepe zaułki na krawędziach labiryntu
             val edgeDeadEnds = allDeadEnds.filter { (r, c) ->
                 r == 0 || r == rows - 1 || c == 0 || c == cols - 1
             }
 
-            // 3. Ustaw Wejście
+            // Ustalenie pozycji wejścia i klucza
             val entrance = if (edgeDeadEnds.isNotEmpty()) edgeDeadEnds.random() else Pair(0, 0)
             maze[entrance.first][entrance.second] = maze[entrance.first][entrance.second] or ENTRANCE
 
-            // 4. Oblicz mapę rodziców (do odtwarzania ścieżek) za pomocą BFS
-            val parents = bfsParents(maze, entrance, rows, cols)
-
-            // 5. Ustaw Klucz (w losowym ślepym zaułku, innym niż wejście)
             val keyCandidates = allDeadEnds.filter { it != entrance }
             val keyPos = if (keyCandidates.isNotEmpty()) keyCandidates.random() else Pair(rows-1, cols-1)
             maze[keyPos.first][keyPos.second] = maze[keyPos.first][keyPos.second] or KEY
 
-            // 6. Znajdź Wyjście i ustaw Drzwi
+            val parents = bfsParents(maze, entrance, rows, cols)
+
             val pathToKey = reconstructPath(parents, keyPos)
             val exitCandidates = allDeadEnds.filter { it != entrance && it != keyPos }.shuffled()
 
@@ -74,6 +73,8 @@ class MazeGenerator {
                 val divergencePoint = findDivergencePoint(pathToKey, pathToExit)
                 val pathAfterDivergence = getPathSegmentAfter(pathToExit, divergencePoint)
 
+                // Jeżeli został znaleziony fragment ścieżki na którym można ustawić
+                // drzwi, tak aby dało się dojść do wyjścia to ustawiamy i wychodzimy z pętli
                 if (pathAfterDivergence.isNotEmpty()) {
                     exitPos = candidate
                     doorPos = pathAfterDivergence.first()
@@ -81,6 +82,7 @@ class MazeGenerator {
                 }
             }
 
+            // Dodajemy wyjście i drzwi do macierzy jeśli udało się je znaleźć
             if (exitPos != null && doorPos != null) {
                 maze[exitPos.first][exitPos.second] = EXIT
                 maze[doorPos.first][doorPos.second] = maze[doorPos.first][doorPos.second] or DOOR
@@ -89,8 +91,15 @@ class MazeGenerator {
             return maze
         }
 
+        /**
+         * Sprawdza czy labirynt jest przechodni (wejście -> klucz -> drzwi -> wyjście)
+         * @param maze Macierz reprezentująca labirynt
+         * @param rows Liczba wierszy
+         * @param cols Liczba kolumn
+         * @return true jeśli labirynt jest przechodni, false w przeciwnym razie
+         */
         private fun isTraversable(maze: Array<IntArray>, rows: Int, cols: Int): Boolean {
-            // Znajdź pozycje wszystkich specjalnych komórek
+            // Ustalenie pozycji kluczowych elementów
             var entrance: Pair<Int, Int>? = null
             var keyPos: Pair<Int, Int>? = null
             var doorPos: Pair<Int, Int>? = null
@@ -106,33 +115,39 @@ class MazeGenerator {
                 }
             }
 
-            // Sprawdź czy wszystkie kluczowe elementy istnieją
+            // Czy kluczowe elementy istnieją
             if (entrance == null || keyPos == null || doorPos == null || exitPos == null) {
-                println("Brak wszystkich wymaganych elementów labiryntu")
                 return false
             }
 
-            // 1. Sprawdź czy można dotrzeć od wejścia do klucza
+            // Dotarcie od wejścia do klucza jest niemożliwe
             if (!canReach(maze, entrance, keyPos, rows, cols, ignoreDoor = true)) {
-                println("Nie można dotrzeć od wejścia do klucza")
                 return false
             }
 
-            // 2. Sprawdź czy można dotrzeć od klucza do drzwi
+            // Dotarcie od klucza do drzwi jest niemożliwe
             if (!canReach(maze, keyPos, doorPos, rows, cols, ignoreDoor = true)) {
-                println("Nie można dotrzeć od klucza do drzwi")
                 return false
             }
 
-            // 3. Sprawdź czy można dotrzeć od drzwi do wyjścia
+            // Dotarcie od drzwi do wyjścia jest niemożliwe
             if (!canReach(maze, doorPos, exitPos, rows, cols, ignoreDoor = false)) {
-                println("Nie można dotrzeć od drzwi do wyjścia")
                 return false
             }
 
             return true
         }
 
+        /**
+         * BFS do sprawdzania czy można dotrzeć z punktu startowego do docelowego
+         * @param maze Macierz reprezentująca labirynt
+         * @param start Punkt startowy (wiersz, kolumna)
+         * @param target Punkt docelowy (wiersz, kolumna)
+         * @param rows Liczba wierszy
+         * @param cols Liczba kolumn
+         * @param ignoreDoor Czy ignorować drzwi podczas sprawdzania przejścia
+         * @return true jeśli można dotrzeć do celu, false w przeciwnym razie
+         */
         private fun canReach(
             maze: Array<IntArray>,
             start: Pair<Int, Int>,
@@ -187,6 +202,15 @@ class MazeGenerator {
 
         // --- Metody pomocnicze ---
 
+        /**
+         * BFS do tworzenia mapy rodziców dla każdej komórki w labiryncie
+         * Pozwala odtworzyć ścieżkę od punktu startowego do dowolnego innego punktu
+         * @param maze Macierz reprezentująca labirynt
+         * @param start Punkt startowy (wejście)
+         * @param rows Liczba wierszy
+         * @param cols Liczba kolumn
+         * @return Mapa rodziców dla każdej komórki
+         */
         private fun bfsParents(
             maze: Array<IntArray>,
             start: Pair<Int, Int>,
@@ -229,6 +253,12 @@ class MazeGenerator {
             return parents
         }
 
+        /**
+         * Odtwarzanie ścieżki od punktu startowego do punktu docelowego za pomocą mapy rodziców
+         * @param parents Mapa rodziców dla każdej komórki
+         * @param target Punkt docelowy (wiersz, kolumna)
+         * @return Lista współrzędnych reprezentujących ścieżkę od startu do celu
+         */
         private fun reconstructPath(
             parents: Map<Pair<Int, Int>, Pair<Int, Int>>,
             target: Pair<Int, Int>
@@ -242,6 +272,13 @@ class MazeGenerator {
             return path.reversed() // Od startu do celu
         }
 
+        /**
+         * Znajdowanie punktu rozbieżności między dwiema ścieżkami
+         * Ostatnia wspólna komórka na obu ścieżkach
+         * @param pathA Pierwsza ścieżka (do klucza)
+         * @param pathB Druga ścieżka (do wyjścia)
+         * @return Punkt rozbieżności (wiersz, kolumna)
+         */
         private fun findDivergencePoint(pathA: List<Pair<Int, Int>>, pathB: List<Pair<Int, Int>>): Pair<Int, Int> {
             var lastCommon = pathA[0]
             val limit = minOf(pathA.size, pathB.size)
@@ -255,12 +292,25 @@ class MazeGenerator {
             return lastCommon
         }
 
+        /**
+         * Pobiera ścieżkę do wyjścia zaczynajacą się po punkcie rozbieżności
+         * @param fullPath Pełna ścieżka (do wyjścia)
+         * @param afterPoint Punkt rozbieżności (wiersz, kolumna)
+         * @return Podścieżka zaczynająca się po punkcie rozbieżności
+         */
         private fun getPathSegmentAfter(fullPath: List<Pair<Int, Int>>, afterPoint: Pair<Int, Int>): List<Pair<Int, Int>> {
             val idx = fullPath.indexOf(afterPoint)
             if (idx == -1 || idx == fullPath.size - 1) return emptyList()
             return fullPath.subList(idx + 1, fullPath.size)
         }
 
+        /**
+         * Znajdowanie wszystkich ślepych zaułków w labiryncie
+         * @param maze Macierz reprezentująca labirynt
+         * @param rows Liczba wierszy
+         * @param cols Liczba kolumn
+         * @return Lista par współrzędnych (wiersz, kolumna) ślepych zaułków
+         */
         private fun findAllDeadEnds(maze: Array<IntArray>, rows: Int, cols: Int): List<Pair<Int, Int>> {
             val deadEnds = mutableListOf<Pair<Int, Int>>()
             for (r in 0 until rows) {
@@ -273,13 +323,23 @@ class MazeGenerator {
             return deadEnds
         }
 
+        /**
+         * Sprawdza czy dana komórka jest ślepym zaułkiem
+         * @param cell Wartość komórki labiryntu
+         * @return true jeśli pozostał tylko jeden bit, false w przeciwnym razie
+         */
         private fun isDeadEnd(cell: Int): Boolean {
-            // Sprawdzamy tylko bity kierunków (1, 2, 4, 8)
             val paths = cell and 0b1111
             return Integer.bitCount(paths) == 1
         }
 
-        // --- Część generująca labirynt pozostaje bez zmian ---
+        /**
+         * Generowanie labiryntu za pomocą rekurencyjnego backtrackingu (Algorytm DFS)
+         * @param maze Macierz reprezentująca labirynt
+         * @param visited Macierz odwiedzonych komórek
+         * @param row Bieżący wiersz
+         * @param col Bieżąca kolumna
+         */
         private fun generatePath(maze: Array<IntArray>, visited: Array<BooleanArray>, row: Int, col: Int) {
             visited[row][col] = true
             val directions = listOf(UP, DOWN, LEFT, RIGHT).shuffled()
@@ -301,6 +361,11 @@ class MazeGenerator {
             }
         }
 
+        /**
+         * Zwraca przeciwny kierunek
+         * @param direction Kierunek wejściowy
+         * @return Przeciwny kierunek
+         */
         private fun opposite(direction: Int): Int {
             return when (direction) {
                 UP -> DOWN
@@ -311,6 +376,14 @@ class MazeGenerator {
             }
         }
 
+        /**
+         * Walidacja współrzędnych
+         * @param r Wiersz
+         * @param c Kolumna
+         * @param rows Liczba wierszy w macierzy
+         * @param cols Liczba kolumn w macierzy
+         * @return true jeśli współrzędne są z zakresu, false w przeciwnym razie
+         */
         private fun isValid(r: Int, c: Int, rows: Int, cols: Int) = r in 0 until rows && c in 0 until cols
     }
 }

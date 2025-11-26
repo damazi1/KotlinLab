@@ -45,22 +45,6 @@ class MazeView @JvmOverloads constructor(
         const val LEFT = 0b0001
     }
 
-    private fun drawKey(canvas: Canvas, cx: Float, cy: Float, cellSize: Float) {
-        val keySize = cellSize / 4
-
-        // Główka klucza (koło)
-        canvas.drawCircle(cx, cy - keySize / 2, keySize / 3, keyPaint)
-
-        // Trzonek klucza (prostokąt)
-        canvas.drawRect(
-            cx - keySize / 8,
-            cy - keySize / 2,
-            cx + keySize / 8,
-            cy + keySize / 2,
-            keyPaint
-        )
-
-    }
 
 
     override fun onDraw(canvas: Canvas) {
