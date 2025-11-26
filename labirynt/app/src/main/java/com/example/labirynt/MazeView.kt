@@ -6,7 +6,9 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
+import kotlin.and
 import kotlin.math.min
+import androidx.core.graphics.toColorInt
 
 class MazeView @JvmOverloads constructor(
     context: Context,
@@ -19,17 +21,47 @@ class MazeView @JvmOverloads constructor(
         color = Color.RED
         style = Paint.Style.FILL
     }
+    private val keyPaint = Paint().apply {
+        color = "#D5B60A".toColorInt()
+        style = Paint.Style.FILL
+    }
+
+    private val doorPaint = Paint().apply {
+        color = Color.rgb(139, 69, 19) // Brązowy kolor
+        style = Paint.Style.FILL
+    }
+
 
     var maze: Array<IntArray> = emptyArray()
     var playerRow: Int = 0
     var playerCol: Int = 0
 
     companion object {
+        const val KEY = 0b100000
+        const val DOOR = 0b1000000
         const val DOWN = 0b1000
         const val UP = 0b0100
         const val RIGHT = 0b0010
         const val LEFT = 0b0001
     }
+
+    private fun drawKey(canvas: Canvas, cx: Float, cy: Float, cellSize: Float) {
+        val keySize = cellSize / 4
+
+        // Główka klucza (koło)
+        canvas.drawCircle(cx, cy - keySize / 2, keySize / 3, keyPaint)
+
+        // Trzonek klucza (prostokąt)
+        canvas.drawRect(
+            cx - keySize / 8,
+            cy - keySize / 2,
+            cx + keySize / 8,
+            cy + keySize / 2,
+            keyPaint
+        )
+
+    }
+
 
     override fun onDraw(canvas: Canvas) {
 
@@ -58,7 +90,7 @@ class MazeView @JvmOverloads constructor(
         val offsetY = (height - cellSize * rows) / 2
 
         // Margines, żeby ściany były grube (np. 20% komórki to ściana)
-        val wallThickness = cellSize / 5
+        val wallThickness = cellSize / 7.5f
 
         for (row in maze.indices) {
             for (col in maze[row].indices) {
@@ -69,8 +101,7 @@ class MazeView @JvmOverloads constructor(
                 val cy = top + cellSize / 2
 
                 if (cell == 0) {
-                    // Rysujemy całe pole jako wyjście
-                    canvas.drawRect(left, top, left + cellSize, top + cellSize, exitPaint)
+                    canvas.drawRect(left, top + cellSize, left + cellSize, top , exitPaint)
                 } else {
                     // Zawsze rysujemy środek komórki (skrzyżowanie)
                     canvas.drawRect(
@@ -92,6 +123,18 @@ class MazeView @JvmOverloads constructor(
                     if ((cell and RIGHT) != 0) {
                         canvas.drawRect(cx, cy - wallThickness, left + cellSize, cy + wallThickness, floorPaint)
                     }
+                    // Rysuj klucz (jeśli bit KEY jest ustawiony)
+                    if ((cell and KEY) != 0) {
+                        canvas.drawCircle(cx + cellSize / 6, cy, cellSize / 6, keyPaint)
+                        canvas.drawRect(cx - cellSize / 6, cy - cellSize / 12, cx + cellSize / 6, cy + cellSize / 12, keyPaint)
+                    }
+
+                    // Rysuj drzwi (jeśli bit DOOR jest ustawiony)
+                    if ((cell and DOOR) != 0) {
+                        canvas.drawRect(cx - wallThickness, cy - cellSize / 4,
+                            cx + wallThickness, cy + cellSize / 4, doorPaint)
+                    }
+
                 }
 
                 // Gracz

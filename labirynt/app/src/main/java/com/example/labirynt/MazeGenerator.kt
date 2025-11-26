@@ -1,7 +1,6 @@
 package com.example.labirynt
 
 import kotlin.random.Random
-import kotlin.text.compareTo
 
 class MazeGenerator {
     companion object {
@@ -11,88 +10,85 @@ class MazeGenerator {
         private const val LEFT = 0b0001
         private const val ENTRANCE = 0b10000
         private const val EXIT = 0b00
-        private const val ONE_WAY_PROBABILITY = 0.1f // 30% szans na jednokierunkowe przejście
-        fun generate(rows: Int, cols: Int): Array<IntArray> {
-            var maze: Array<IntArray>
-            var entrancePos: Pair<Int, Int>
+
+       fun generate(rows: Int, cols: Int): Array<IntArray> {
+            val maze = Array(rows) { IntArray(cols) }
+            val visited = Array(rows) { BooleanArray(cols) { false } }
+
+            // Wygeneruj spójny labirynt
+            generatePath(maze, visited, 0, 0)
+
+            // Znajdź wszystkie ślepe zaułki na krawędziach
+            val deadEnds = findEdgeDeadEnds(maze, rows, cols)
+
+            // Wybierz losowe wejście
+            val entrancePos = deadEnds.random()
+            maze[entrancePos.first][entrancePos.second] =
+                maze[entrancePos.first][entrancePos.second] or ENTRANCE
+
+            // Wybierz losowe wyjście (inne niż wejście)
             var exitPos: Pair<Int, Int>
-
-            // Generuj labirynt dopóki nie będzie w pełni osiągalny
             do {
-                maze = Array(rows) { IntArray(cols) { 0 } }
-                val visited = Array(rows) { BooleanArray(cols) { false } }
+                exitPos = deadEnds.random()
+            } while (exitPos == entrancePos)
 
-                generatePath(maze, visited, 0, 0)
-
-                entrancePos = getRandomEdgePosition(rows, cols)
-                maze[entrancePos.first][entrancePos.second] =
-                    maze[entrancePos.first][entrancePos.second] or ENTRANCE
-
-                do {
-                    exitPos = getRandomEdgePosition(rows, cols)
-                } while (exitPos == entrancePos)
-
-                maze[exitPos.first][exitPos.second] = EXIT
-
-            } while (!isFullyReachable(maze, entrancePos.first, entrancePos.second))
+            // Wyzeruj komórkę wyjścia
+            maze[exitPos.first][exitPos.second] = EXIT
 
             return maze
         }
 
-        private fun isFullyReachable(maze: Array<IntArray>, startRow: Int, startCol: Int): Boolean {
-            val rows = maze.size
-            val cols = maze[0].size
-            val visited = Array(rows) { BooleanArray(cols) { false } }
-            val queue = ArrayDeque<Pair<Int, Int>>()
+        /**
+         * Znajduje wszystkie ślepe zaułki (dead ends) na krawędziach labiryntu.
+         * Ślepy zaułek = komórka z tylko jednym przejściem.
+         */
+        private fun findEdgeDeadEnds(
+            maze: Array<IntArray>,
+            rows: Int,
+            cols: Int
+        ): List<Pair<Int, Int>> {
+            val deadEnds = mutableListOf<Pair<Int, Int>>()
 
-            queue.add(Pair(startRow, startCol))
-            visited[startRow][startCol] = true
-            var reachableCount = 1
+            for (row in 0 until rows) {
+                for (col in 0 until cols) {
+                    // Sprawdź czy komórka jest na krawędzi
+                    val isEdge = row == 0 || row == rows - 1 || col == 0 || col == cols - 1
 
-            while (queue.isNotEmpty()) {
-                val (row, col) = queue.removeFirst()
-                val cell = maze[row][col]
-
-                // Sprawdź wszystkie możliwe kierunki
-                if ((cell and UP) != 0 && row > 0 && !visited[row - 1][col]) {
-                    visited[row - 1][col] = true
-                    queue.add(Pair(row - 1, col))
-                    reachableCount++
-                }
-                if ((cell and DOWN) != 0 && row < rows - 1 && !visited[row + 1][col]) {
-                    visited[row + 1][col] = true
-                    queue.add(Pair(row + 1, col))
-                    reachableCount++
-                }
-                if ((cell and LEFT) != 0 && col > 0 && !visited[row][col - 1]) {
-                    visited[row][col - 1] = true
-                    queue.add(Pair(row, col - 1))
-                    reachableCount++
-                }
-                if ((cell and RIGHT) != 0 && col < cols - 1 && !visited[row][col + 1]) {
-                    visited[row][col + 1] = true
-                    queue.add(Pair(row, col + 1))
-                    reachableCount++
+                    if (isEdge && isDeadEnd(maze[row][col])) {
+                        deadEnds.add(Pair(row, col))
+                    }
                 }
             }
 
-            // Sprawdź czy wszystkie komórki są osiągalne
-            return reachableCount == rows * cols
+            return deadEnds
         }
 
+        /**
+         * Sprawdza czy komórka jest ślepym zaułkiem (ma tylko jedno przejście).
+         */
+        private fun isDeadEnd(cell: Int): Boolean {
+            val paths = cell and 0b1111 // Maskuj tylko kierunki (bez ENTRANCE)
+            // Sprawdź ile bitów jest ustawionych (ile przejść)
+            return paths.countOneBits() == 1
+        }
 
-        private fun getRandomEdgePosition(rows: Int, cols: Int): Pair<Int, Int> {
-            val edge = Random.nextInt(4) // 0=góra, 1=dół, 2=lewo, 3=prawo
-
-            return when (edge) {
-                0 -> Pair(0, Random.nextInt(cols)) // Górna krawędź
-                1 -> Pair(rows - 1, Random.nextInt(cols)) // Dolna krawędź
-                2 -> Pair(Random.nextInt(rows), 0) // Lewa krawędź
-                else -> Pair(Random.nextInt(rows), cols - 1) // Prawa krawędź
+        /**
+         *   Zwraca przeciwny kierunek (Do tworzenia tras)
+         */
+        private fun opposite(direction: Int): Int {
+            return when (direction) {
+                UP -> DOWN
+                DOWN -> UP
+                LEFT -> RIGHT
+                RIGHT -> LEFT
+                else -> 0
             }
         }
-
-
+        /**
+         * Rekurencyjna funkcja do generowania ścieżek w labiryncie
+         * Wykorzystuje algorytm DFS (Algorytm przeszukiwania w grafu w głąb)
+         * z losowym wyborem kierunków (Tutaj za losowość odpowiada funkcja shuffled())
+         */
         private fun generatePath(
             maze: Array<IntArray>,
             visited: Array<BooleanArray>,
@@ -114,38 +110,23 @@ class MazeGenerator {
                     RIGHT -> 1
                     else -> 0
                 }
-
+                // Sprawdza czy pozycja przechodzi walidacjię (czyli mieści się w zakresie od 0 do n)
+                // oraz czy nie była odwiedzona
+                // Jeżeli obia warunki są spełnione, to tworzy ścieżkę między komórkami i ponownie wywołuje samą siebie
+                // tym razem z nowymi współrzędnymi
                 if (isValid(newRow, newCol, maze.size, maze[0].size) &&
                     !visited[newRow][newCol]) {
 
-                    // Dodaj przejście w kierunku ruchu
                     maze[row][col] = maze[row][col] or direction
-
-                    // Z pewnym prawdopodobieństwem NIE dodawaj przejścia powrotnego
-                    if (Random.nextFloat() > ONE_WAY_PROBABILITY) {
-                        // Dwukierunkowe - dodaj przejście w obu kierunkach
-                        maze[newRow][newCol] = maze[newRow][newCol] or opposite(direction)
-                    }
-                    // W przeciwnym razie pozostaw jednokierunkowe
+                    maze[newRow][newCol] = maze[newRow][newCol] or opposite(direction)
 
                     generatePath(maze, visited, newRow, newCol)
                 }
             }
         }
 
-
         private fun isValid(row: Int, col: Int, rows: Int, cols: Int): Boolean {
             return row in 0 until rows && col in 0 until cols
-        }
-
-        private fun opposite(direction: Int): Int {
-            return when (direction) {
-                UP -> DOWN
-                DOWN -> UP
-                LEFT -> RIGHT
-                RIGHT -> LEFT
-                else -> 0
-            }
         }
     }
 }
