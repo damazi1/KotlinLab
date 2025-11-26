@@ -1,5 +1,6 @@
 package com.example.labirynt
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
@@ -12,13 +13,13 @@ import kotlin.text.get
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
 
-    private val maze = arrayOf(
-        intArrayOf(10,8,10,9),
-        intArrayOf(28,33,0,76),
-        intArrayOf(12,10,9,13),
-        intArrayOf(6,5,6,5)
-    )
-//private var maze: Array<IntArray> = MazeGenerator.generate(8,8)
+//    private val maze = arrayOf(
+//        intArrayOf(10,8,10,9),
+//        intArrayOf(28,33,0,76),
+//        intArrayOf(12,10,9,13),
+//        intArrayOf(6,5,6,5)
+//    )
+private var maze: Array<IntArray> = MazeGenerator.generate(4,4)
 
 
     companion object {
@@ -55,7 +56,7 @@ class MainActivity : AppCompatActivity() {
 
         for (row in maze.indices) {
             for (col in maze[row].indices) {
-                // Sprawdź czy 4. bit jest ustawiony
+                // Sprawdź czy to jest wejście
                 if ((maze[row][col] and ENTRANCE) != 0) {
                     playerRow = row
                     playerCol = col
@@ -161,7 +162,7 @@ class MainActivity : AppCompatActivity() {
 
             // Opóźnienie 5 sekund przed przejściem do ekranu końcowego
             binding.root.postDelayed({
-                val intent = android.content.Intent(this, Finish::class.java)
+                val intent = Intent(this, Finish::class.java)
                 intent.putExtra("STEP_COUNT", stepCount) // Przekaż liczbę kroków
                 startActivity(intent)
                 finish()
