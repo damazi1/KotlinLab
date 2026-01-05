@@ -23,7 +23,7 @@ class UserLoanAdapter(private var items: List<BookWithLoan>) :
         fun bind(item: BookWithLoan) {
             title.text = item.book.title
             contact.text = item.book.author + " - " + item.book.year + " r."
-            loanDate.text = item.loan.date
+            loanDate.text = "Wypożyczono: ${item.loan.date}  Termin oddania: ${(item.loan.plannedReturnDate ?: "brak planowanej daty zwrotu")}"
             cb.setOnCheckedChangeListener(null)
             cb.isChecked = selectedIds.contains(item.loan.id)
             cb.setOnCheckedChangeListener { _, checked ->

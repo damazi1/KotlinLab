@@ -6,5 +6,6 @@ data class Loan(
     val contactId: String,
     val date: String,
     val returnDate: String?,
-    val status: String
+    val status: String,
+    val plannedReturnDate: String?    // nowe pole
 )

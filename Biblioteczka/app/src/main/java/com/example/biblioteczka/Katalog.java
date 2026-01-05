@@ -8,7 +8,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
 public class Katalog extends SQLiteOpenHelper {
-    private static final int version = 17;
+    private static final int version = 18;
     public Katalog(Context context) {
         super(context, "biblioteczka.db", null, version);
     }
@@ -36,6 +36,7 @@ public class Katalog extends SQLiteOpenHelper {
                     "contact_id TEXT NOT NULL," +
                     "data TEXT DEFAULT CURRENT_TIMESTAMP," +
                     "return_date TEXT," +
+                    "planned_return_date TEXT," +
                     "status TEXT DEFAULT 'borrowed'," +
                     "FOREIGN KEY(book_id) REFERENCES ksiazki(id) ON DELETE CASCADE" +
                     ");");

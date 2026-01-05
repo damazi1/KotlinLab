@@ -2,6 +2,7 @@ package com.example.biblioteczka
 
 import android.content.ContentValues
 import android.content.Context
+import android.database.sqlite.SQLiteDatabase
 import android.os.Build
 import android.widget.Toast
 import androidx.annotation.RequiresApi
@@ -38,7 +39,7 @@ fun loadBooksFromDb(katalog: Katalog): List<Book> {
 fun loadLoans(katalog: Katalog): List<Loan> {
     val out = mutableListOf<Loan>()
     val db = katalog.readableDatabase
-    val c = db.rawQuery("SELECT id, book_id, contact_id, data, return_date, status FROM wypozyczenia", null)
+    val c = db.rawQuery("SELECT id, book_id, contact_id, data, return_date, status, planned_return_date FROM wypozyczenia", null)
     c.use { cur ->
         val idIdx = cur.getColumnIndexOrThrow("id")
         val bookIdx = cur.getColumnIndexOrThrow("book_id")
@@ -46,6 +47,7 @@ fun loadLoans(katalog: Katalog): List<Loan> {
         val dateIdx = cur.getColumnIndexOrThrow("data")
         val returnDateIdx = cur.getColumnIndexOrThrow("return_date")
         val statusIdx = cur.getColumnIndexOrThrow("status")
+        val plannedIdx = cur.getColumnIndexOrThrow("planned_return_date")
         while (cur.moveToNext()) {
             out.add(
                 Loan(
@@ -54,13 +56,26 @@ fun loadLoans(katalog: Katalog): List<Loan> {
                     cur.getString(contactIdx),
                     cur.getString(dateIdx),
                     cur.getString(returnDateIdx),
-                    cur.getString(statusIdx)
+                    cur.getString(statusIdx),
+                    cur.getString(plannedIdx)
                 )
             )
         }
     }
     db.close()
     return out
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+fun borrowBook(bookId: String, contactId: String, plannedReturnDate: String?, katalog: Katalog) {
+    val db = katalog.writableDatabase
+    val values = ContentValues().apply {
+        put("book_id", bookId)
+        put("contact_id", contactId)
+        put("planned_return_date", plannedReturnDate)
+    }
+    db.insertWithOnConflict("wypozyczenia", null, values, SQLiteDatabase.CONFLICT_IGNORE)
+    db.close()
 }
 
 @RequiresApi(Build.VERSION_CODES.O)

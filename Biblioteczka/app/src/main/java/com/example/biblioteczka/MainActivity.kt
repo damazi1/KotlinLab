@@ -1,10 +1,12 @@
 package com.example.biblioteczka
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteDatabase
 import android.os.Build
 import android.os.Bundle
+import android.widget.Button
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
@@ -77,10 +79,15 @@ class MainActivity : AppCompatActivity() {
         recyclerContacts.layoutManager = LinearLayoutManager(this)
         contactsAdapter = ContactAdapter(contacts) { contact ->
             val toBorrow = bookAdapter.selectedBookIds()
-            toBorrow.forEach { bookId -> borrowBook(bookId, contact.id) }
+            toBorrow.forEach { bookId -> borrowBook(bookId, contact.id,
+                LocalDate.now().plusDays(30).toString(), katalog) }
             bookAdapter.updateLoans(loadLoans())
         }
         recyclerContacts.adapter = contactsAdapter
+
+        findViewById<Button>(R.id.btnHistory).setOnClickListener {
+            startActivity(Intent(this, HistoryActivity::class.java))
+        }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -145,36 +152,36 @@ class MainActivity : AppCompatActivity() {
         recyclerAdapter?.updateContacts(contacts)
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun borrowBook(bookId: String, contactId: String) {
-        val db = katalog.writableDatabase
-        val values = android.content.ContentValues().apply {
-            put("book_id", bookId)
-            put("contact_id", contactId)
-        }
-        try {
-            val result = db.insertWithOnConflict(
-                "wypozyczenia",
-                null,
-                values,
-                SQLiteDatabase.CONFLICT_IGNORE
-            )
-            if (result == -1L) {
-                android.widget.Toast.makeText(this, "Ta ksiazka jest wypozyczona lub nie istnieje", android.widget.Toast.LENGTH_SHORT).show()
-            }
-        } catch (e: android.database.sqlite.SQLiteConstraintException) {
-            android.widget.Toast.makeText(this, "Brak książki o id $bookId", android.widget.Toast.LENGTH_SHORT).show()
-        } finally {
-            db.close()
-        }
-    }
+//    @RequiresApi(Build.VERSION_CODES.O)
+//    private fun borrowBook(bookId: String, contactId: String) {
+//        val db = katalog.writableDatabase
+//        val values = android.content.ContentValues().apply {
+//            put("book_id", bookId)
+//            put("contact_id", contactId)
+//        }
+//        try {
+//            val result = db.insertWithOnConflict(
+//                "wypozyczenia",
+//                null,
+//                values,
+//                SQLiteDatabase.CONFLICT_IGNORE
+//            )
+//            if (result == -1L) {
+//                android.widget.Toast.makeText(this, "Ta ksiazka jest wypozyczona lub nie istnieje", android.widget.Toast.LENGTH_SHORT).show()
+//            }
+//        } catch (e: android.database.sqlite.SQLiteConstraintException) {
+//            android.widget.Toast.makeText(this, "Brak książki o id $bookId", android.widget.Toast.LENGTH_SHORT).show()
+//        } finally {
+//            db.close()
+//        }
+//    }
 
 
     fun loadLoans(): List<Loan> {
         val out = mutableListOf<Loan>()
         val db = katalog.readableDatabase
         val c = db.rawQuery(
-            "SELECT id, book_id, contact_id, data, return_date, status FROM wypozyczenia",
+            "SELECT id, book_id, contact_id, data, return_date, status, planned_return_date FROM wypozyczenia",
             null
         )
         c.use { cur ->
@@ -184,6 +191,7 @@ class MainActivity : AppCompatActivity() {
             val dateIdx = cur.getColumnIndexOrThrow("data")
             val returnDateIdx = cur.getColumnIndexOrThrow("return_date")
             val statusIdx = cur.getColumnIndexOrThrow("status")
+            val plannedIdx = cur.getColumnIndexOrThrow("planned_return_date")
             while (cur.moveToNext()) {
                 out.add(
                     Loan(
@@ -192,7 +200,8 @@ class MainActivity : AppCompatActivity() {
                         cur.getString(contactIdx),
                         cur.getString(dateIdx),
                         cur.getString(returnDateIdx),
-                        cur.getString(statusIdx)
+                        cur.getString(statusIdx),
+                        cur.getString(plannedIdx)
                     )
                 )
             }
