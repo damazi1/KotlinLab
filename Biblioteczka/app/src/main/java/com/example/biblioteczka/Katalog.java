@@ -41,7 +41,7 @@ public class Katalog extends SQLiteOpenHelper {
                     "FOREIGN KEY(book_id) REFERENCES ksiazki(id) ON DELETE CASCADE" +
                     ");");
         } catch (SQLiteException e) {
-            Log.e("Katalog", "Błąd podczas tworzenia tabeli ksiazki", e);
+            Log.e("Katalog", "Błąd podczas tworzenia tabel", e);
         }
     }
 

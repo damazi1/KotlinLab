@@ -7,16 +7,22 @@ import androidx.recyclerview.widget.RecyclerView
 
 class HistoryActivity : AppCompatActivity() {
     private lateinit var katalog: Katalog
+    private lateinit var booksById: Map<String, Book>
+    private lateinit var contactsById: Map<String, Contact>
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_history)
 
         katalog = Katalog(this)
+        booksById = loadBooks().associateBy { it.id }
+        contactsById = ContactsHelper(this).getAllContacts().associateBy { it.id }
         val loans = loadLoans()
 
         val recycler = findViewById<RecyclerView>(R.id.recyclerHistory)
         recycler.layoutManager = LinearLayoutManager(this)
-        recycler.adapter = HistoryAdapter(loans)
+        recycler.adapter = HistoryAdapter(loans, booksById, contactsById)
     }
 
     private fun loadLoans(): List<Loan> {
@@ -50,5 +56,36 @@ class HistoryActivity : AppCompatActivity() {
         }
         db.close()
         return out
+    }
+
+    private fun loadBooks(): List<Book> {
+        val list = mutableListOf<Book>()
+        val db = katalog.readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT id, tytul, autor, rok_wydania, opis, url FROM ksiazki",
+            null
+        )
+        cursor.use { c ->
+            val idIdx = c.getColumnIndexOrThrow("id")
+            val tytulIdx = c.getColumnIndexOrThrow("tytul")
+            val autorIdx = c.getColumnIndexOrThrow("autor")
+            val rokIdx = c.getColumnIndexOrThrow("rok_wydania")
+            val opisIdx = c.getColumnIndexOrThrow("opis")
+            val urlIdx = c.getColumnIndexOrThrow("url")
+            while (c.moveToNext()) {
+                list.add(
+                    Book(
+                        c.getString(idIdx),
+                        c.getString(tytulIdx),
+                        c.getString(autorIdx),
+                        c.getInt(rokIdx),
+                        c.getString(opisIdx),
+                        c.getString(urlIdx)
+                    )
+                )
+            }
+        }
+        db.close()
+        return list
     }
 }
